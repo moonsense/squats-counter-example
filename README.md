@@ -1,0 +1,1 @@
+# squats-counter-example
