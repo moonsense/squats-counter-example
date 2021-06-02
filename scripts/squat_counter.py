@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 import dotenv
 import numpy as np
@@ -10,14 +11,13 @@ dotenv.load_dotenv()
 client = Client(secret_token=os.environ['MOONSENSE_SECRET_TOKEN'])
 
 
-def identify_reps(df_acceleration):
+def identify_reps(df_acceleration: pd.DataFrame) -> (List, List):
+    """ input is a pandas dataframe with x,y,z accelreation data.
+    Output is a list of start and end indices of all the identified repetitions"""
     upward_thresh = 12.0
     z_acc = df_acceleration['z']
-
     # apply a low pass (averaging) filter on the signal
-
     # We want to the start and end location of every consecutive sequence of measurement above our threshold
-
     # Note: scipy.signal.find_peaks would accomplish this, but feel magical. So we do out ourselves.
 
     segment_start_locations = []
@@ -43,6 +43,9 @@ def identify_reps(df_acceleration):
 
 
 def main():
+    """ go over all the recorded sessions we have on file, and identify squat repetitions,
+    plotting them out for visualization purposes"""
+
     # get all the sessions we've recorded so far
     sessions = client.list_sessions()
 
@@ -55,7 +58,7 @@ def main():
             squat_mentions.append(any(['squat' in label]))
         return any(squat_mentions)
 
-    # sessions = [session for session in sessions if filter_squat_session(session.labels)]
+    sessions = [session for session in sessions if filter_squat_session(session.labels)]
 
     for session in sessions:
 
@@ -66,8 +69,9 @@ def main():
             session_gyro_data.extend(payload['bundle']['gyroscope_data'])
 
         df_acceleration = pd.DataFrame.from_records(session_acceleration_data)
+        # the gyro data isn't used in this code, but good to kow we can also check out our device orientation
         session_gyro_data = pd.DataFrame.from_records(session_gyro_data)
-        print(session.labels)
+
         if df_acceleration.empty:
             continue
         df_acceleration.rename(columns={'determined_at': 'timestamp'}, inplace=True)
@@ -98,18 +102,11 @@ def main():
         z = df_acceleration['z']
         plt.figure(figsize=(8, 8))
         plt.plot(t, z, label='all')
-        i = 0
-        for start_loc, end_loc in zip(segment_starts, segment_ends):
-            plt.plot(t[start_loc:end_loc], z[start_loc:end_loc], label=str(i), marker='*')
-            print(t[end_loc] - t[start_loc])
-            i += 1
         plt.xlabel('time [sec]')
         plt.ylabel('acceleration [m/s^2]')
         plt.legend()
+        plt.title('raw acceleration on z axis')
         plt.show()
-
-
-
 
         filter_length = 10
         df_acceleration_filtered = filter_accelerations(df_acceleration, filter_length)
@@ -122,19 +119,18 @@ def main():
         i = 0
         for start_loc, end_loc in zip(segment_starts, segment_ends):
             plt.plot(t[start_loc:end_loc], z[start_loc:end_loc], label=str(i), marker='*')
-            print(t[end_loc] - t[start_loc])
+
             i += 1
         plt.xlabel('time [sec]')
         plt.ylabel('acceleration [m/s^2]')
         plt.legend()
+        plt.title(f'{len(segment_starts)} squats identified. Their timing is shown in color')
         plt.show()
 
-        print('next')
 
-    pass
-
-
-def filter_accelerations(df_acceleration, filter_length):
+def filter_accelerations(df_acceleration: pd.DataFrame, filter_length: int) -> pd.DataFrame:
+    """ This smooths out our recorded acceleration data with ar olling average.
+    You can mess around with other lowpass filters, like hanning, gaussian, etc. """
     filter_kernel = np.ones(filter_length) / filter_length
     z = df_acceleration['z']
     filtered_z = np.convolve(z,
