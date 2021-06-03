@@ -12,7 +12,7 @@ source activate venv/bin/activate
 pip install -r reqquirements.txt
 ```
 
-2. Run our example script. It will iterate on all the seessions and display our identified squat repetitions. See the blog post for
+2. Run our example script. It will iterate on all the seessions and display our identified squat repetitions. See the [blog post](https://urimerhav.medium.com/from-the-gym-to-a-jupyter-notebook-building-a-squats-counter-app-in-a-day-955ecfbf8d12) for
    reference.
 
 To get data, you'll want to sign up to [moonsense](https://www.moonsense.io/). You'll get an api token like `your_secret_token`
